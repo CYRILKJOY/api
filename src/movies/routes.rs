@@ -103,3 +103,24 @@ async fn list_movie_showtimes(
 
     Ok(Json(showtimes))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+    use chrono::Utc;
+
+    #[test]
+    fn test_movie_serialization() {
+        let movie = Movie {
+            id: Uuid::new_v4(),
+            title: "Dune".into(),
+            slug: "dune".into(),
+            duration_minutes: 155,
+            poster_url: None,
+        };
+
+        let json = serde_json::to_string(&movie).unwrap();
+        assert!(json.contains("Dune"));
+    }
+}

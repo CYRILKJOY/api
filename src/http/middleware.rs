@@ -22,6 +22,43 @@ pub async fn require_auth(
     mut req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    let claims = extract_claims(&state, &req)?;
+    req.extensions_mut().insert(claims);
+    Ok(next.run(req).await)
+}
+
+pub async fn require_admin(
+    State(state): State<AppState>,
+    mut req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let claims = extract_claims(&state, &req)?;
+
+    // Verify admin role in the database for security
+    let profile = sqlx::query!(
+        r#"
+        SELECT role FROM profiles WHERE id = $1
+        "#,
+        claims.sub
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let is_admin = match profile {
+        Some(p) => p.role == "admin",
+        None => false,
+    };
+
+    if !is_admin {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    req.extensions_mut().insert(claims);
+    Ok(next.run(req).await)
+}
+
+fn extract_claims(state: &AppState, req: &Request) -> Result<Claims, StatusCode> {
     let auth_header = req
         .headers()
         .get(header::AUTHORIZATION)
@@ -41,8 +78,7 @@ pub async fn require_auth(
 
     let mut validation = Validation::default();
     validation.validate_exp = true;
-    validation.validate_nbf = false; // Supabase doesn't always set this
-    // Supabase JWT uses HS256 algorithm by default
+    validation.validate_nbf = false; 
 
     let token_data = match decode::<Claims>(
         token,
@@ -56,9 +92,5 @@ pub async fn require_auth(
         }
     };
 
-    // Insert the decoded Claims into the request extensions
-    // Rust handlers will extract this using `Extension<Claims>`
-    req.extensions_mut().insert(token_data.claims);
-
-    Ok(next.run(req).await)
+    Ok(token_data.claims)
 }

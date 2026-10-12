@@ -16,6 +16,8 @@ pub fn api_router(state: AppState) -> Router<AppState> {
         .nest("/api/v1/sse", crate::sse::routes::router())
         .nest("/api/v1/payments", crate::payments::routes::router(state.clone()))
         .nest("/api/v1/bookings", crate::bookings::routes::router(state.clone()))
+        .nest("/api/v1/admin", crate::admin::router(state.clone()))
+        .nest("/api/v1/profiles", crate::profiles::routes::router(state.clone()))
 }
 
 async fn health_check() -> Json<Value> {

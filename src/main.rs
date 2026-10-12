@@ -10,6 +10,8 @@ mod showtimes;
 mod sse;
 mod payments;
 mod bookings;
+mod admin;
+mod profiles;
 
 #[derive(Clone)]
 pub struct AppState {
